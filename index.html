@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>منصة تعليم - ربط أستاذ بتلميذ</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Cairo -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            cairo: ['Cairo', 'sans-serif'],
+          },
+          colors: {
+            primary: '#2563eb',
+            primaryDark: '#1d4ed8',
+            surface: '#f8fafc',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Cairo', sans-serif;
+      background-color: #f1f5f9;
+      -webkit-tap-highlight-color: transparent;
+      overflow-x: hidden;
+    }
+    /* Smooth page transitions */
+    .view {
+      display: none;
+      animation: fadeIn 0.25s ease-out;
+    }
+    .view.active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    /* Hide scrollbar but keep functionality */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* Touch feedback */
+    .touch-btn:active {
+      transform: scale(0.97);
+    }
+    /* Teacher card hover (desktop) */
+    .teacher-card {
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .teacher-card:active {
+      transform: scale(0.98);
+    }
+    /* Image upload preview */
+    .preview-img {
+      max-height: 200px;
+      object-fit: cover;
+      border-radius: 0.75rem;
+    }
+  </style>
+<base target="_blank">
+</head>
+<body class="text-slate-800 bg-slate-100 min-h-screen">
+
+  <!-- ============================
+       VIEW: الصفحة الرئيسية
+       ============================ -->
+  <div id="view-home" class="view active">
+    <div class="min-h-screen flex flex-col items-center justify-center px-6 py-10">
+      <div class="w-20 h-20 bg-primary rounded-2xl flex items-center justify-center shadow-lg mb-6">
+        <i class="fa-solid fa-graduation-cap text-white text-3xl"></i>
+      </div>
+      <h1 class="text-3xl font-extrabold text-slate-900 mb-2 text-center">منصة تعليم</h1>
+      <p class="text-slate-500 text-center mb-10 text-sm">نوصلك بأفضل الأساتذة لتحقيق التفوق</p>
+
+      <div class="w-full max-w-sm space-y-4">
+        <button onclick="navigateTo('student')" class="touch-btn w-full bg-primary hover:bg-primaryDark text-white font-bold py-4 px-6 rounded-xl shadow-md flex items-center justify-center gap-3 text-lg transition">
+          <i class="fa-solid fa-user-graduate"></i>
+          <span>أنا تلميذ</span>
+        </button>
+        <button onclick="navigateTo('teacher-form')" class="touch-btn w-full bg-white hover:bg-slate-50 text-primary border-2 border-primary font-bold py-4 px-6 rounded-xl shadow-sm flex items-center justify-center gap-3 text-lg transition">
+          <i class="fa-solid fa-chalkboard-user"></i>
+          <span>أنا أستاذ</span>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-400 mt-8 text-center">اضغط مطولاً على أي صورة لحفظها أو مشاركتها</p>
+    </div>
+  </div>
+
+  <!-- ============================
+       VIEW: قائمة الأساتذة (واجهة التلميذ)
+       ============================ -->
+  <div id="view-student" class="view">
+    <!-- Header -->
+    <div class="bg-primary text-white px-4 pt-4 pb-6 rounded-b-3xl shadow-md sticky top-0 z-30">
+      <div class="flex items-center justify-between mb-4">
+        <button onclick="navigateTo('home')" class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition">
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+        <h2 class="text-lg font-bold">استكشف الأساتذة</h2>
+        <div class="w-10"></div>
+      </div>
+      <!-- Search -->
+      <div class="relative max-w-md mx-auto">
+        <input type="text" id="searchInput" placeholder="ابحث بالمادة (رياضيات، فيزياء...)" oninput="renderTeachers()"
+          class="w-full pr-10 pl-4 py-3 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-white/50 bg-white shadow-sm text-sm">
+        <i class="fa-solid fa-search absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+      </div>
+    </div>
+
+    <!-- Teacher List -->
+    <div class="px-4 py-5 pb-24 max-w-md mx-auto">
+      <div id="teachersList" class="space-y-4"></div>
+      <div id="emptyState" class="hidden flex-col items-center justify-center py-12 text-center">
+        <div class="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mb-3">
+          <i class="fa-solid fa-user-slash text-slate-400 text-xl"></i>
+        </div>
+        <p class="text-slate-500 text-sm">لا يوجد أساتذة مسجلون بعد</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================
+       VIEW: تفاصيل الأستاذ
+       ============================ -->
+  <div id="view-teacher-detail" class="view">
+    <div class="bg-white min-h-screen pb-20">
+      <!-- Top bar -->
+      <div class="flex items-center justify-between px-4 pt-4 pb-2">
+        <button onclick="navigateTo('student')" class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition">
+          <i class="fa-solid fa-arrow-right text-slate-600"></i>
+        </button>
+        <h2 class="text-base font-bold text-slate-800">الملف الشخصي</h2>
+        <div class="w-10"></div>
+      </div>
+
+      <div class="px-5 pt-4 text-center">
+        <div class="w-24 h-24 mx-auto rounded-full bg-slate-200 flex items-center justify-center text-3xl text-slate-500 font-bold mb-3 overflow-hidden border-4 border-white shadow-lg" id="detailAvatar">
+          <!-- حرف الاسم الأول -->
+        </div>
+        <h3 id="detailName" class="text-xl font-extrabold text-slate-900 mb-1"></h3>
+        <span id="detailSubject" class="inline-block bg-primary/10 text-primary text-xs font-bold px-3 py-1 rounded-full mb-3"></span>
+
+        <div class="flex items-center justify-center gap-6 text-sm text-slate-500 mb-5">
+          <div class="flex items-center gap-1">
+            <i class="fa-solid fa-location-dot text-slate-400"></i>
+            <span id="detailState"></span>
+          </div>
+          <div class="flex items-center gap-1">
+            <i class="fa-solid fa-money-bill-wave text-slate-400"></i>
+            <span id="detailPrice"></span>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 rounded-xl p-4 text-right mb-6">
+          <h4 class="text-sm font-bold text-slate-700 mb-2">نبذة عن الأستاذ</h4>
+          <p id="detailBio" class="text-sm text-slate-600 leading-relaxed"></p>
+        </div>
+
+        <button onclick="openBooking()" class="touch-btn w-full bg-primary hover:bg-primaryDark text-white font-bold py-4 rounded-xl shadow-md text-lg transition">
+          <i class="fa-solid fa-calendar-check ml-2"></i>
+          احجز درساً الآن
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================
+       VIEW: صفحة الدفع الوسيط (Escrow)
+       ============================ -->
+  <div id="view-payment" class="view">
+    <div class="min-h-screen bg-white pb-24">
+      <div class="flex items-center justify-between px-4 pt-4 pb-2 border-b border-slate-100">
+        <button onclick="navigateTo('teacher-detail')" class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition">
+          <i class="fa-solid fa-arrow-right text-slate-600"></i>
+        </button>
+        <h2 class="text-base font-bold text-slate-800">إتمام الحجز</h2>
+        <div class="w-10"></div>
+      </div>
+
+      <div class="px-5 pt-5 max-w-md mx-auto">
+        <!-- Alert -->
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-5 flex items-start gap-3">
+          <i class="fa-solid fa-shield-halved text-primary mt-0.5"></i>
+          <div>
+            <p class="text-sm font-bold text-slate-800 mb-1">نظام الدفع الوسيط</p>
+            <p class="text-xs text-slate-600 leading-relaxed">تحويلك يبقى محتفظاً به لدى المنصة إلى غاية تأكيد إعطاء الدرس، ثم يتم تحويله للأستاذ.</p>
+          </div>
+        </div>
+
+        <!-- Teacher mini card -->
+        <div class="bg-slate-50 rounded-xl p-3 flex items-center gap-3 mb-5 border border-slate-100">
+          <div class="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg" id="payAvatar"></div>
+          <div>
+            <p class="text-sm font-bold text-slate-800" id="payTeacherName"></p>
+            <p class="text-xs text-slate-500" id="paySubject"></p>
+          </div>
+          <div class="mr-auto text-sm font-bold text-primary" id="payAmount"></div>
+        </div>
+
+        <!-- Payment details -->
+        <div class="bg-white rounded-xl border border-slate-200 p-4 mb-5">
+          <h4 class="text-sm font-bold text-slate-800 mb-3">معلومات الدفع</h4>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between py-2 border-b border-slate-100">
+              <span class="text-slate-500">طريقة الدفع</span>
+              <span class="font-bold text-slate-800">CCP / BaridiMob</span>
+            </div>
+            <div class="flex justify-between py-2 border-b border-slate-100">
+              <span class="text-slate-500">رقم الحساب (CCP)</span>
+              <span class="font-bold text-slate-800 ltr" dir="ltr">00799999001234567890</span>
+            </div>
+            <div class="flex justify-between py-2 border-b border-slate-100">
+              <span class="text-slate-500">المبلغ المطلوب</span>
+              <span class="font-bold text-primary" id="payPrice"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Booking form -->
+        <form id="bookingForm" onsubmit="submitBooking(event)">
+          <div class="space-y-4 mb-5">
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1">الاسم الكامل</label>
+              <input type="text" id="studentName" required placeholder="اكتب اسمك هنا"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/40 bg-slate-50 text-sm">
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1">رقم الهاتف</label>
+              <input type="tel" id="studentPhone" required placeholder="05XX XX XX XX"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/40 bg-slate-50 text-sm ltr" dir="ltr">
+            </div>
+          </div>
+
+          <!-- Proof upload -->
+          <div class="mb-6">
+            <label class="block text-sm font-bold text-slate-700 mb-2">إثبات التحويل (صورة الوصل)</label>
+            <div class="relative">
+              <input type="file" id="proofImage" accept="image/*" required onchange="previewImage(this)"
+                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+              <div id="uploadBox" class="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center bg-slate-50 hover:bg-slate-100 transition">
+                <i class="fa-solid fa-cloud-arrow-up text-slate-400 text-2xl mb-2"></i>
+                <p class="text-xs text-slate-500">اضغط لرفع صورة الوصل</p>
+              </div>
+              <img id="imagePreview" class="preview-img hidden w-full mt-2 border border-slate-200" />
+            </div>
+          </div>
+
+          <button type="submit" class="touch-btn w-full bg-primary hover:bg-primaryDark text-white font-bold py-4 rounded-xl shadow-md text-lg transition">
+            <i class="fa-solid fa-paper-plane ml-2"></i>
+            تأكيد الحجز
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================
+       VIEW: نموذج تسجيل الأستاذ
+       ============================ -->
+  <div id="view-teacher-form" class="view">
+    <div class="min-h-screen bg-white pb-24">
+      <div class="flex items-center justify-between px-4 pt-4 pb-2 border-b border-slate-100">
+        <button onclick="navigateTo('home')" class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition">
+          <i class="fa-solid fa-arrow-right text-slate-600"></i>
+        </button>
+        <h2 class="text-base font-bold text-slate-800">تسجيل كأستاذ</h2>
+        <div class="w-10"></div>
+      </div>
+
+      <div class="px-5 pt-6 max-w-md mx-auto">
+        <form id="registerForm" onsubmit="registerTeacher(event)">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1">الاسم الكامل</label>
+              <input type="text" id="tName" required placeholder="مثال: أحمد بن علي"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/40 bg-slate-50 text-sm">
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1">المادة</label>
+              <select id="tSubject" required
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/40 bg-slate-50 text-sm">
+                <option value="">اختر المادة</option>
+                <option value="رياضيات">رياضيات</option>
+                <option value="فيزياء">فيزياء</option>
+                <option value="علوم">علوم</option>
+                <option value="لغة عربية">لغة عربية</option>
+                <option value="لغة فرنسية">لغة فرنسية</option>
+                <option value="لغة إنجليزية">لغة إنجليزية</option>
+                <option value="تاريخ وجغرافيا">تاريخ وجغرافيا</option>
+                <option value="علوم طبيعية">علوم طبيعية</option>
+                <option value="أخرى">أخرى</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1">الولاية</label>
+              <select id="tState" required
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/40 bg-slate-50 text-sm">
+                <option value="">اختر الولاية</option>
+                <option value="الجزائر">الجزائر</option>
+                <option value="وهران">وهران</option>
+                <option value="قسنطينة">قسنطينة</option>
+                <option value="عنابة">عنابة</option>
+                <option value="بليدة">بليدة</option>
+                <option value="باتنة">باتنة</option>
+                <option value="سطيف">سطيف</option>
+                <option value="تلمسان">تلمسان</option>
+                <option value="بومرداس">بومرداس</option>
+                <option value="واد سوف">واد سوف</option>
+                <option value="أخرى">أخرى</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1">السعر للساعة (دينار)</label>
+              <input type="number" id="tPrice" required min="0" placeholder="مثال: 1500"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/40 bg-slate-50 text-sm">
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1">نبذة مختصرة</label>
+              <textarea id="tBio" required rows="3" placeholder="اكتب نبذة قصيرة عن خبراتك وشهاداتك..."
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/40 bg-slate-50 text-sm resize-none"></textarea>
+            </div>
+          </div>
+
+          <button type="submit" class="touch-btn w-full bg-primary hover:bg-primaryDark text-white font-bold py-4 rounded-xl shadow-md text-lg transition mt-6">
+            <i class="fa-solid fa-check ml-2"></i>
+            سجل بياناتي
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================
+       VIEW: لوحة تحكم الأستاذ
+       ============================ -->
+  <div id="view-teacher-dashboard" class="view">
+    <div class="min-h-screen bg-slate-100 pb-24">
+      <div class="bg-white px-4 pt-4 pb-4 border-b border-slate-200 sticky top-0 z-30">
+        <div class="flex items-center justify-between mb-3">
+          <button onclick="navigateTo('home')" class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition">
+            <i class="fa-solid fa-arrow-right text-slate-600"></i>
+          </button>
+          <h2 class="text-base font-bold text-slate-800">لوحة تحكم الأستاذ</h2>
+          <div class="w-10"></div>
+        </div>
+        <div class="flex gap-2 text-sm">
+          <button onclick="switchDashTab('info')" id="tab-info" class="flex-1 py-2 rounded-lg bg-primary text-white font-bold transition">بياناتي</button>
+          <button onclick="switchDashTab('bookings')" id="tab-bookings" class="flex-1 py-2 rounded-lg bg-slate-100 text-slate-600 font-bold transition">الحجوزات</button>
+        </div>
+      </div>
+
+      <div class="px-4 pt-4 max-w-md mx-auto">
+        <!-- Tab: Info -->
+        <div id="dash-info" class="dash-tab">
+          <div class="bg-white rounded-xl border border-slate-200 p-5 mb-4">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center text-xl font-bold" id="dashAvatar"></div>
+              <div>
+                <p class="font-extrabold text-slate-900" id="dashName"></p>
+                <p class="text-xs text-slate-500" id="dashSubject"></p>
+              </div>
+            </div>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between py-2 border-b border-slate-100">
+                <span class="text-slate-500">الولاية</span>
+                <span class="font-bold text-slate-800" id="dashState"></span>
+              </div>
+              <div class="flex justify-between py-2 border-b border-slate-100">
+                <span class="text-slate-500">السعر/الساعة</span>
+                <span class="font-bold text-primary" id="dashPrice"></span>
+              </div>
+              <div class="py-2">
+                <span class="text-slate-500 block mb-1">السيرة الذاتية</span>
+                <p class="text-slate-700 leading-relaxed" id="dashBio"></p>
+              </div>
+            </div>
+          </div>
+          <button onclick="deleteTeacher()" class="w-full py-3 rounded-xl border border-red-200 text-red-600 text-sm font-bold hover:bg-red-50 transition">
+            <i class="fa-solid fa-trash ml-1"></i> حذف حسابي من المنصة
+          </button>
+        </div>
+
+        <!-- Tab: Bookings -->
+        <div id="dash-bookings" class="dash-tab hidden">
+          <div id="bookingsList" class="space-y-3"></div>
+          <div id="bookingsEmpty" class="hidden flex-col items-center justify-center py-12 text-center">
+            <div class="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mb-3">
+              <i class="fa-solid fa-inbox text-slate-400 text-xl"></i>
+            </div>
+            <p class="text-slate-500 text-sm">لا توجد حجوزات جديدة</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================
+       VIEW: رسالة نجاح
+       ============================ -->
+  <div id="view-success" class="view">
+    <div class="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+      <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-5">
+        <i class="fa-solid fa-check text-green-600 text-3xl"></i>
+      </div>
+      <h2 class="text-2xl font-extrabold text-slate-900 mb-2">تم بنجاح!</h2>
+      <p id="successMessage" class="text-slate-500 text-sm mb-8 max-w-xs mx-auto leading-relaxed"></p>
+      <button onclick="navigateTo('home')" class="touch-btn w-full max-w-xs bg-primary hover:bg-primaryDark text-white font-bold py-4 rounded-xl shadow-md text-lg transition">
+        العودة للرئيسية
+      </button>
+    </div>
+  </div>
+
+  <!-- ============================
+       Bottom Nav (visible on student & teacher list)
+       ============================ -->
+  <div id="bottomNav" class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-3 flex justify-around z-40 hidden">
+    <button onclick="navigateTo('home')" class="flex flex-col items-center gap-1 text-slate-400 hover:text-primary transition">
+      <i class="fa-solid fa-house text-lg"></i>
+      <span class="text-[10px] font-bold">الرئيسية</span>
+    </button>
+    <button onclick="navigateTo('student')" class="flex flex-col items-center gap-1 text-slate-400 hover:text-primary transition">
+      <i class="fa-solid fa-magnifying-glass text-lg"></i>
+      <span class="text-[10px] font-bold">استكشاف</span>
+    </button>
+    <button onclick="navigateTo('teacher-dashboard')" class="flex flex-col items-center gap-1 text-slate-400 hover:text-primary transition">
+      <i class="fa-solid fa-user text-lg"></i>
+      <span class="text-[10px] font-bold">حسابي</span>
+    </button>
+  </div>
+
+  <!-- ============================
+       JAVASCRIPT - Logic
+       ============================ -->
+  <script>
+    /* ======================================================
+       DATA STORE - LocalStorage (Prototype)
+       ======================================================
+       TODO/Firebase Integration:
+       - استبدل دوال getTeachers(), saveTeachers(), getBookings(), saveBookings()
+         باستدعاءات Firebase Firestore (collection().get(), add(), update(), delete())
+       - استخدم Firebase Auth لربط كل أستاذ بحسابه (UID)
+       - احفظ صور الوصول في Firebase Storage واحفظ الرابط فقط في Firestore
+       ====================================================== */
+
+    const DB_KEYS = {
+      TEACHERS: 'edu_teachers',
+      BOOKINGS: 'edu_bookings',
+      VIEW: 'edu_currentView',
+      DETAIL_ID: 'edu_detailId'
+    };
+
+    // -------- Helpers: LocalStorage CRUD --------
+    function getTeachers() {
+      try {
+        return JSON.parse(localStorage.getItem(DB_KEYS.TEACHERS)) || [];
+      } catch { return []; }
+    }
+    function saveTeachers(list) {
+      localStorage.setItem(DB_KEYS.TEACHERS, JSON.stringify(list));
+    }
+    function getBookings() {
+      try {
+        return JSON.parse(localStorage.getItem(DB_KEYS.BOOKINGS)) || [];
+      } catch { return []; }
+    }
+    function saveBookings(list) {
+      localStorage.setItem(DB_KEYS.BOOKINGS, JSON.stringify(list));
+    }
+    function generateId() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    }
+
+    // -------- State & Navigation --------
+    let currentDetailTeacherId = null;
+
+    function navigateTo(viewName, options = {}) {
+      // Hide all views
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+
+      // Show target
+      const target = document.getElementById('view-' + viewName);
+      if (target) target.classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Save state
+      localStorage.setItem(DB_KEYS.VIEW, viewName);
+
+      // Bottom nav visibility
+      const showNav = ['student', 'teacher-dashboard'].includes(viewName);
+      document.getElementById('bottomNav').classList.toggle('hidden', !showNav);
+
+      // Special actions per view
+      if (viewName === 'student') renderTeachers();
+      if (viewName === 'teacher-dashboard') renderDashboard();
+      if (viewName === 'teacher-detail' && options.teacherId) {
+        currentDetailTeacherId = options.teacherId;
+        localStorage.setItem(DB_KEYS.DETAIL_ID, options.teacherId);
+        renderTeacherDetail(options.teacherId);
+      }
+      if (viewName === 'teacher-detail' && !options.teacherId) {
+        const savedId = localStorage.getItem(DB_KEYS.DETAIL_ID);
+        if (savedId) renderTeacherDetail(savedId);
+      }
+      if (viewName === 'payment') renderPaymentView();
+    }
+
+    // -------- Render: Teachers List --------
+    function renderTeachers() {
+      const listEl = document.getElementById('teachersList');
+      const emptyEl = document.getElementById('emptyState');
+      const query = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+      let teachers = getTeachers();
+
+      if (query) {
+        teachers = teachers.filter(t => t.subject.toLowerCase().includes(query) || t.name.toLowerCase().includes(query));
+      }
+
+      if (teachers.length === 0) {
+        listEl.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+        emptyEl.classList.add('flex');
+        return;
+      }
+      emptyEl.classList.add('hidden');
+      emptyEl.classList.remove('flex');
+
+      listEl.innerHTML = teachers.map(t => `
+        <div onclick="navigateTo('teacher-detail', {teacherId:'${t.id}'}); event.stopPropagation();"
+          class="teacher-card bg-white rounded-xl p-4 border border-slate-100 shadow-sm flex items-center gap-3 cursor-pointer">
+          <div class="w-14 h-14 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-lg shrink-0">
+            ${t.name.charAt(0)}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between mb-0.5">
+              <h3 class="text-sm font-extrabold text-slate-900 truncate">${t.name}</h3>
+              <span class="text-xs font-bold text-primary whitespace-nowrap">${t.price} د.ج</span>
+            </div>
+            <p class="text-xs text-slate-500 mb-1 truncate">${t.subject} · ${t.state}</p>
+            <p class="text-[11px] text-slate-400 truncate">${t.bio.substring(0, 60)}${t.bio.length > 60 ? '...' : ''}</p>
+          </div>
+          <div class="text-slate-300">
+            <i class="fa-solid fa-chevron-left text-sm"></i>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // -------- Render: Teacher Detail --------
+    function renderTeacherDetail(id) {
+      const teachers = getTeachers();
+      const t = teachers.find(x => x.id === id);
+      if (!t) return;
+      currentDetailTeacherId = id;
+
+      document.getElementById('detailName').textContent = t.name;
+      document.getElementById('detailSubject').textContent = t.subject;
+      document.getElementById('detailState').textContent = t.state;
+      document.getElementById('detailPrice').textContent = t.price + ' د.ج/س';
+      document.getElementById('detailBio').textContent = t.bio;
+      document.getElementById('detailAvatar').textContent = t.name.charAt(0);
+    }
+
+    // -------- Booking / Payment --------
+    function openBooking() {
+      if (!currentDetailTeacherId) return;
+      navigateTo('payment');
+    }
+
+    function renderPaymentView() {
+      const teachers = getTeachers();
+      const t = teachers.find(x => x.id === currentDetailTeacherId);
+      if (!t) return;
+      document.getElementById('payAvatar').textContent = t.name.charAt(0);
+      document.getElementById('payTeacherName').textContent = t.name;
+      document.getElementById('paySubject').textContent = t.subject;
+      document.getElementById('payAmount').textContent = t.price + ' د.ج';
+      document.getElementById('payPrice').textContent = t.price + ' د.ج';
+    }
+
+    function previewImage(input) {
+      const preview = document.getElementById('imagePreview');
+      const box = document.getElementById('uploadBox');
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          preview.src = e.target.result;
+          preview.classList.remove('hidden');
+          box.classList.add('hidden');
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    function submitBooking(e) {
+      e.preventDefault();
+      const teachers = getTeachers();
+      const t = teachers.find(x => x.id === currentDetailTeacherId);
+      if (!t) return;
+
+      const name = document.getElementById('studentName').value.trim();
+      const phone = document.getElementById('studentPhone').value.trim();
+      const fileInput = document.getElementById('proofImage');
+      let proofBase64 = '';
+
+      if (fileInput.files && fileInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          proofBase64 = ev.target.result;
+          finalizeBooking(name, phone, proofBase64, t);
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+      } else {
+        finalizeBooking(name, phone, '', t);
+      }
+    }
+
+    function finalizeBooking(name, phone, proofBase64, teacher) {
+      const booking = {
+        id: generateId(),
+        teacherId: teacher.id,
+        teacherName: teacher.name,
+        studentName: name,
+        phone: phone,
+        amount: teacher.price,
+        paymentProof: proofBase64, // TODO/Firebase: في الإنتاج، ارفع الصورة إلى Firebase Storage واحفظ الرابط هنا
+        status: 'pending', // pending | confirmed | completed | cancelled
+        date: new Date().toISOString()
+      };
+      const bookings = getBookings();
+      bookings.unshift(booking);
+      saveBookings(bookings);
+
+      // Reset form
+      document.getElementById('bookingForm').reset();
+      document.getElementById('imagePreview').classList.add('hidden');
+      document.getElementById('uploadBox').classList.remove('hidden');
+
+      // Success
+      document.getElementById('successMessage').textContent = 'تم استلام طلب حجزك. سيتواصل معك فريق المنصة لتأكيد الموعد بعد التحقق من الدفع.';
+      navigateTo('success');
+    }
+
+    // -------- Teacher Registration --------
+    function registerTeacher(e) {
+      e.preventDefault();
+      const teacher = {
+        id: generateId(),
+        name: document.getElementById('tName').value.trim(),
+        subject: document.getElementById('tSubject').value,
+        state: document.getElementById('tState').value,
+        price: document.getElementById('tPrice').value,
+        bio: document.getElementById('tBio').value.trim(),
+        createdAt: new Date().toISOString()
+      };
+      const list = getTeachers();
+      list.unshift(teacher);
+      saveTeachers(list);
+
+      // Remember this is the "logged in" teacher (prototype only)
+      localStorage.setItem('edu_myTeacherId', teacher.id);
+
+      document.getElementById('registerForm').reset();
+      document.getElementById('successMessage').textContent = 'تم تسجيلك بنجاح في المنصة. يمكنك الآن إدارة بياناتك واستقبال الحجوزات من لوحة التحكم.';
+      navigateTo('success');
+    }
+
+    // -------- Dashboard --------
+    function renderDashboard() {
+      const myId = localStorage.getItem('edu_myTeacherId');
+      const teachers = getTeachers();
+      const me = teachers.find(t => t.id === myId);
+
+      if (!me) {
+        // If no registered teacher account, show empty state in dashboard
+        document.getElementById('dash-info').innerHTML = `
+          <div class="bg-white rounded-xl border border-slate-200 p-8 text-center">
+            <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <i class="fa-solid fa-user-plus text-slate-400 text-xl"></i>
+            </div>
+            <p class="text-sm text-slate-600 mb-3">لم تسجل كأستاذ بعد</p>
+            <button onclick="navigateTo('teacher-form')" class="text-primary text-sm font-bold hover:underline">سجل الآن</button>
+          </div>
+        `;
+        document.getElementById('dash-bookings').innerHTML = '';
+        return;
+      }
+
+      // Restore tabs content
+      document.getElementById('dash-info').innerHTML = `
+        <div class="bg-white rounded-xl border border-slate-200 p-5 mb-4">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center text-xl font-bold" id="dashAvatar"></div>
+            <div>
+              <p class="font-extrabold text-slate-900" id="dashName"></p>
+              <p class="text-xs text-slate-500" id="dashSubject"></p>
+            </div>
+          </div>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between py-2 border-b border-slate-100">
+              <span class="text-slate-500">الولاية</span>
+              <span class="font-bold text-slate-800" id="dashState"></span>
+            </div>
+            <div class="flex justify-between py-2 border-b border-slate-100">
+              <span class="text-slate-500">السعر/الساعة</span>
+              <span class="font-bold text-primary" id="dashPrice"></span>
+            </div>
+            <div class="py-2">
+              <span class="text-slate-500 block mb-1">السيرة الذاتية</span>
+              <p class="text-slate-700 leading-relaxed" id="dashBio"></p>
+            </div>
+          </div>
+        </div>
+        <button onclick="deleteTeacher()" class="w-full py-3 rounded-xl border border-red-200 text-red-600 text-sm font-bold hover:bg-red-50 transition">
+          <i class="fa-solid fa-trash ml-1"></i> حذف حسابي من المنصة
+        </button>
+      `;
+
+      document.getElementById('dashAvatar').textContent = me.name.charAt(0);
+      document.getElementById('dashName').textContent = me.name;
+      document.getElementById('dashSubject').textContent = me.subject;
+      document.getElementById('dashState').textContent = me.state;
+      document.getElementById('dashPrice').textContent = me.price + ' د.ج';
+      document.getElementById('dashBio').textContent = me.bio;
+
+      // Bookings
+      const bookings = getBookings().filter(b => b.teacherId === me.id);
+      const listEl = document.getElementById('bookingsList');
+      const emptyEl = document.getElementById('bookingsEmpty');
+
+      if (bookings.length === 0) {
+        listEl.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+        emptyEl.classList.add('flex');
+      } else {
+        emptyEl.classList.add('hidden');
+        emptyEl.classList.remove('flex');
+        listEl.innerHTML = bookings.map(b => `
+          <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-500">${new Date(b.date).toLocaleDateString('ar-DZ')}</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${b.status === 'pending' ? 'bg-amber-100 text-amber-700' : b.status === 'confirmed' ? 'bg-primary/10 text-primary' : 'bg-green-100 text-green-700'}">
+                ${b.status === 'pending' ? 'بانتظار التأكيد' : b.status === 'confirmed' ? 'مؤكد' : 'مكتمل'}
+              </span>
+            </div>
+            <div class="flex items-center gap-2 mb-2">
+              <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600">${b.studentName.charAt(0)}</div>
+              <div>
+                <p class="text-sm font-bold text-slate-800">${b.studentName}</p>
+                <p class="text-[11px] text-slate-500">${b.phone}</p>
+              </div>
+              <div class="mr-auto text-sm font-bold text-primary">${b.amount} د.ج</div>
+            </div>
+            ${b.paymentProof ? `<img src="${b.paymentProof}" class="w-full h-32 object-cover rounded-lg border border-slate-100 mb-2">` : ''}
+            <div class="flex gap-2 mt-1">
+              ${b.status === 'pending' ? `
+                <button onclick="updateBookingStatus('${b.id}', 'confirmed')" class="flex-1 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primaryDark transition">تأكيد</button>
+                <button onclick="updateBookingStatus('${b.id}', 'cancelled')" class="flex-1 py-2 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-200 transition">رفض</button>
+              ` : ''}
+              ${b.status === 'confirmed' ? `
+                <button onclick="updateBookingStatus('${b.id}', 'completed')" class="w-full py-2 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition">تأكيد إعطاء الدرس</button>
+              ` : ''}
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    function switchDashTab(tab) {
+      document.querySelectorAll('.dash-tab').forEach(el => el.classList.add('hidden'));
+      document.getElementById('dash-' + tab).classList.remove('hidden');
+
+      const btnInfo = document.getElementById('tab-info');
+      const btnBook = document.getElementById('tab-bookings');
+      if (tab === 'info') {
+        btnInfo.className = 'flex-1 py-2 rounded-lg bg-primary text-white font-bold transition';
+        btnBook.className = 'flex-1 py-2 rounded-lg bg-slate-100 text-slate-600 font-bold transition';
+      } else {
+        btnInfo.className = 'flex-1 py-2 rounded-lg bg-slate-100 text-slate-600 font-bold transition';
+        btnBook.className = 'flex-1 py-2 rounded-lg bg-primary text-white font-bold transition';
+      }
+    }
+
+    function updateBookingStatus(id, status) {
+      const list = getBookings();
+      const idx = list.findIndex(b => b.id === id);
+      if (idx !== -1) {
+        list[idx].status = status;
+        saveBookings(list);
+        renderDashboard();
+      }
+    }
+
+    function deleteTeacher() {
+      if (!confirm('هل أنت متأكد من حذف حسابك؟')) return;
+      const myId = localStorage.getItem('edu_myTeacherId');
+      let teachers = getTeachers();
+      teachers = teachers.filter(t => t.id !== myId);
+      saveTeachers(teachers);
+      localStorage.removeItem('edu_myTeacherId');
+      navigateTo('home');
+    }
+
+    // -------- Init --------
+    // On page load, restore last view
+    (function init() {
+      const savedView = localStorage.getItem(DB_KEYS.VIEW) || 'home';
+      const allowed = ['home', 'student', 'teacher-detail', 'payment', 'teacher-form', 'teacher-dashboard', 'success'];
+      const view = allowed.includes(savedView) ? savedView : 'home';
+      navigateTo(view);
+    })();
+  </script>
+</body>
+</html>
